@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Gateway Modbus{% endblock %}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  {% block extra_head %}{% endblock %}
+</head>
+<body class="min-h-screen bg-slate-100 text-slate-900">
+  <header class="bg-slate-900 text-white">
+    <nav class="mx-auto flex max-w-7xl items-center gap-6 px-6 py-4">
+      <a class="font-semibold" href="{% url 'dashboard' %}">Gateway Modbus</a>
+      {% if user.is_authenticated %}
+        <a class="text-slate-200 hover:text-white" href="{% url 'device_list' %}">Dispositivos</a>
+        <a class="text-slate-200 hover:text-white" href="{% url 'record_list' %}">Registros</a>
+        {% if user.has_admin_access %}
+          <a class="text-slate-200 hover:text-white" href="{% url 'accounts:user_list' %}">Usuarios</a>
+        {% endif %}
+        <span class="ml-auto text-sm text-slate-300">{{ user.get_full_name|default:user.username }} · {{ user.get_role_display }}</span>
+        <form method="post" action="{% url 'logout' %}">
+          {% csrf_token %}
+          <button class="rounded bg-slate-700 px-3 py-1 hover:bg-slate-600" type="submit">Salir</button>
+        </form>
+      {% endif %}
+    </nav>
+  </header>
+  <main class="mx-auto max-w-7xl px-6 py-8">
+    {% for message in messages %}
+      <div class="mb-4 rounded border border-emerald-200 bg-emerald-50 px-4 py-3 text-emerald-900">{{ message }}</div>
+    {% endfor %}
+    {% block content %}{% endblock %}
+  </main>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

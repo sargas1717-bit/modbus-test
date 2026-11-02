@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Dashboard · Gateway Modbus{% endblock %}
+{% block extra_head %}
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+{% endblock %}
+{% block content %}
+<div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <h1 class="text-3xl font-semibold">Dashboard</h1>
+    <p class="mt-1 text-slate-600">Estado de comunicaciones y últimas mediciones.</p>
+  </div>
+  {% if user.has_admin_access %}
+    <a class="rounded bg-blue-700 px-4 py-2 text-white hover:bg-blue-800" href="{% url 'device_create' %}">Registrar dispositivo</a>
+  {% endif %}
+</div>
+<div class="mb-6 grid gap-4 sm:grid-cols-2">
+  <article class="rounded-xl bg-white p-5 shadow-sm">
+    <p class="text-sm text-slate-500">Dispositivos activos</p>
+    <p class="mt-2 text-3xl font-semibold">{{ active_device_count }}</p>
+  </article>
+  <article class="rounded-xl bg-white p-5 shadow-sm">
+    <p class="text-sm text-slate-500">Registros históricos</p>
+    <p class="mt-2 text-3xl font-semibold">{{ record_count }}</p>
+  </article>
+</div>
+<section class="mb-6 rounded-xl bg-white p-5 shadow-sm">
+  <h2 class="mb-3 text-xl font-semibold">Histórico reciente</h2>
+  <div id="history-chart" class="min-h-80"></div>
+</section>
+<section class="rounded-xl bg-white p-5 shadow-sm">
+  <h2 class="mb-4 text-xl font-semibold">Últimos registros</h2>
+  <div class="overflow-x-auto">
+    <table class="w-full text-left text-sm">
+      <thead><tr class="border-b text-slate-500"><th class="py-2">Fecha</th><th>Dispositivo</th><th>Valor</th></tr></thead>
+      <tbody>
+        {% for record in records %}
+          <tr class="border-b last:border-0"><td class="py-2">{{ record.timestamp|date:"Y-m-d H:i:s" }}</td><td>{{ record.device.name }}</td><td>{{ record.value }}</td></tr>
+        {% empty %}
+          <tr><td class="py-4 text-slate-500" colspan="3">Todavía no hay mediciones.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{{ chart_data|json_script:"chart-data" }}
+{% endblock %}
+{% block scripts %}
+<script>
+  const chartData = JSON.parse(document.getElementById("chart-data").textContent);
+  const traces = chartData.map(series => ({
+    x: series.labels,
+    y: series.values,
+    type: "scatter",
+    mode: "lines+markers",
+    name: series.name
+  }));
+  Plotly.newPlot("history-chart", traces, {
+    autosize: true,
+    margin: { t: 10, r: 20, b: 55, l: 55 },
+    xaxis: { title: "Fecha" },
+    yaxis: { title: "Valor" }
+  }, { responsive: true });
+</script>
+{% endblock %}

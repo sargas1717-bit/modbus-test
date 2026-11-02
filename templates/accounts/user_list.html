@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Usuarios · Gateway Modbus{% endblock %}
+{% block content %}
+<div class="mb-6 flex items-center justify-between">
+  <h1 class="text-3xl font-semibold">Usuarios</h1>
+  <a class="rounded bg-blue-700 px-4 py-2 text-white" href="{% url 'accounts:user_create' %}">Nuevo usuario</a>
+</div>
+<div class="overflow-x-auto rounded-xl bg-white p-5 shadow-sm">
+  <table class="w-full text-left text-sm">
+    <thead><tr class="border-b text-slate-500"><th class="py-2">Usuario</th><th>Nombre</th><th>Correo</th><th>Rol</th><th>Estado</th><th>Acciones</th></tr></thead>
+    <tbody>
+      {% for account in users %}
+        <tr class="border-b last:border-0">
+          <td class="py-3">{{ account.username }}</td><td>{{ account.get_full_name|default:"—" }}</td><td>{{ account.email|default:"—" }}</td>
+          <td>{{ account.get_role_display }}</td><td>{{ account.is_active|yesno:"Activo,Inactivo" }}</td>
+          <td class="space-x-3"><a class="text-blue-700" href="{% url 'accounts:user_update' account.pk %}">Editar</a><a class="text-red-700" href="{% url 'accounts:user_delete' account.pk %}">Eliminar</a></td>
+        </tr>
+      {% empty %}
+        <tr><td class="py-4 text-slate-500" colspan="6">No hay usuarios registrados.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

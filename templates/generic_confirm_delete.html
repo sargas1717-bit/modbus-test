@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}{{ page_title }} · Gateway Modbus{% endblock %}
+{% block content %}
+<section class="mx-auto max-w-xl rounded-xl bg-white p-6 shadow">
+  <h1 class="mb-4 text-2xl font-semibold">{{ page_title }}</h1>
+  <p class="mb-6">¿Confirmas que deseas eliminar <strong>{{ object }}</strong>?</p>
+  <form method="post">
+    {% csrf_token %}
+    <button class="rounded bg-red-700 px-4 py-2 text-white hover:bg-red-800" type="submit">Eliminar</button>
+    <a class="ml-2 rounded border px-4 py-2" href="{{ view.success_url }}">Cancelar</a>
+  </form>
+</section>
+{% endblock %}

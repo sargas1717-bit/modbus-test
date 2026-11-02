@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Dispositivos · Gateway Modbus{% endblock %}
+{% block content %}
+<div class="mb-6 flex items-center justify-between">
+  <h1 class="text-3xl font-semibold">Dispositivos</h1>
+  {% if user.has_admin_access %}<a class="rounded bg-blue-700 px-4 py-2 text-white" href="{% url 'device_create' %}">Nuevo dispositivo</a>{% endif %}
+</div>
+<div class="overflow-x-auto rounded-xl bg-white p-5 shadow-sm">
+  <table class="w-full text-left text-sm">
+    <thead><tr class="border-b text-slate-500"><th class="py-2">Nombre</th><th>Dirección Modbus</th><th>Ubicación</th><th>Estado</th>{% if user.has_admin_access %}<th>Acciones</th>{% endif %}</tr></thead>
+    <tbody>
+      {% for device in devices %}
+        <tr class="border-b last:border-0">
+          <td class="py-3">{{ device.name }}</td><td>{{ device.modbus_address }}</td><td>{{ device.location }}</td>
+          <td>{{ device.is_active|yesno:"Activo,Inactivo" }}</td>
+          {% if user.has_admin_access %}
+            <td class="space-x-3"><a class="text-blue-700" href="{% url 'device_update' device.pk %}">Editar</a><a class="text-red-700" href="{% url 'device_delete' device.pk %}">Eliminar</a></td>
+          {% endif %}
+        </tr>
+      {% empty %}
+        <tr><td class="py-4 text-slate-500" colspan="5">No hay dispositivos registrados.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
