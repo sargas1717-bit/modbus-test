@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block title %}Análisis · {{ device.name }}{% endblock %}
+{% block extra_head %}
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+{% endblock %}
+{% block content %}
+<div class="mb-6 flex flex-wrap items-end justify-between gap-4">
+  <div>
+    <a class="text-sm text-blue-700 hover:underline" href="{% url 'device_list' %}">← Dispositivos</a>
+    <h1 class="mt-2 text-3xl font-semibold">Análisis del sensor</h1>
+    <p class="mt-1 text-slate-600">{{ device.name }} · {{ device.get_sensor_type_display }} · Modbus {{ device.modbus_address }}</p>
+  </div>
+</div>
+
+<section class="mb-6 rounded-xl bg-white p-6 shadow-sm">
+  <h2 class="mb-4 text-xl font-semibold">Filtrar periodo</h2>
+  <form method="get" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    {% for field in form %}
+      <div>
+        <label class="mb-1 block text-sm font-medium" for="{{ field.id_for_label }}">{{ field.label }}</label>
+        <input
+          class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-100"
+          type="date"
+          name="{{ field.name }}"
+          id="{{ field.id_for_label }}"
+          value="{{ field.value|default_if_none:'' }}"
+        >
+        {% for error in field.errors %}<p class="mt-1 text-sm text-red-700">{{ error }}</p>{% endfor %}
+      </div>
+    {% endfor %}
+    <div class="flex flex-wrap items-end gap-2">
+      <button class="rounded-lg bg-blue-700 px-4 py-2 font-medium text-white hover:bg-blue-800" type="submit">Aplicar</button>
+      <button class="rounded-lg bg-emerald-700 px-4 py-2 font-medium text-white hover:bg-emerald-800" type="submit" formaction="{% url 'device_export' device.pk %}">Exportar Excel</button>
+    </div>
+    {% for error in form.non_field_errors %}<p class="text-sm text-red-700 sm:col-span-2">{{ error }}</p>{% endfor %}
+  </form>
+</section>
+
+<section class="mb-6">
+  <div class="mb-3 flex items-center justify-between">
+    <h2 class="text-2xl font-semibold">Métricas del periodo</h2>
+    <span class="text-sm text-slate-500">{{ record_count }} registros</span>
+  </div>
+  <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <article class="rounded-xl bg-white p-5 shadow-sm">
+      <p class="text-sm text-slate-500">Promedio</p>
+      <p class="mt-2 text-2xl font-semibold">{% if metrics.average != None %}{{ metrics.average|floatformat:2 }}{% else %}—{% endif %}<span class="ml-1 text-sm text-slate-500">{{ device.sensor_unit }}</span></p>
+    </article>
+    <article class="rounded-xl bg-white p-5 shadow-sm">
+      <p class="text-sm text-slate-500">Máximo</p>
+      <p class="mt-2 text-2xl font-semibold">{% if metrics.maximum != None %}{{ metrics.maximum|floatformat:2 }}{% else %}—{% endif %}<span class="ml-1 text-sm text-slate-500">{{ device.sensor_unit }}</span></p>
+    </article>
+    <article class="rounded-xl bg-white p-5 shadow-sm">
+      <p class="text-sm text-slate-500">Mínimo</p>
+      <p class="mt-2 text-2xl font-semibold">{% if metrics.minimum != None %}{{ metrics.minimum|floatformat:2 }}{% else %}—{% endif %}<span class="ml-1 text-sm text-slate-500">{{ device.sensor_unit }}</span></p>
+    </article>
+    <article class="rounded-xl bg-white p-5 shadow-sm">
+      <p class="text-sm text-slate-500">Varianza poblacional</p>
+      <p class="mt-2 text-2xl font-semibold">{% if metrics.variance != None %}{{ metrics.variance|floatformat:2 }}{% else %}—{% endif %}<span class="ml-1 text-sm text-slate-500">{{ device.sensor_unit }}²</span></p>
+    </article>
+  </div>
+  {% if metrics.standard_deviation != None %}
+    <p class="mt-2 text-sm text-slate-500">Desviación estándar poblacional: {{ metrics.standard_deviation|floatformat:2 }} {{ device.sensor_unit }}</p>
+  {% endif %}
+</section>
+
+<section class="rounded-xl bg-white p-5 shadow-sm">
+  <h2 class="mb-3 text-xl font-semibold">Histórico de {{ device.name }}</h2>
+  <div id="analytics-chart" class="h-96 w-full"></div>
+</section>
+{{ chart_data|json_script:"analytics-data" }}
+{% endblock %}
+{% block scripts %}
+<script>
+  const analytics = JSON.parse(document.getElementById("analytics-data").textContent);
+  if (analytics.values.length) {
+    Plotly.newPlot("analytics-chart", [{
+      x: analytics.labels,
+      y: analytics.values,
+      type: "scatter",
+      mode: "lines+markers",
+      name: "{{ device.name|escapejs }}",
+      line: { shape: "spline", width: 2 },
+      marker: { size: 5 }
+    }], {
+      autosize: true,
+      margin: { t: 10, r: 20, b: 55, l: 65 },
+      paper_bgcolor: "transparent",
+      plot_bgcolor: "transparent",
+      xaxis: { title: "Fecha y hora", gridcolor: "#f1f5f9" },
+      yaxis: {
+        title: analytics.unit ? `Valor (${analytics.unit})` : "Valor",
+        gridcolor: "#f1f5f9"
+      },
+      hovermode: "x unified"
+    }, { responsive: true, displaylogo: false });
+  } else {
+    document.getElementById("analytics-chart").textContent =
+      "No hay registros para el periodo seleccionado.";
+  }
+</script>
+{% endblock %}

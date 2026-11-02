@@ -5,8 +5,8 @@ from .models import DataRecord, Device
 
 @admin.register(Device)
 class DeviceAdmin(admin.ModelAdmin):
-    list_display = ("name", "modbus_address", "location", "is_active")
-    list_filter = ("is_active",)
+    list_display = ("name", "sensor_type", "modbus_address", "location", "is_active")
+    list_filter = ("sensor_type", "is_active")
     search_fields = ("name", "location")
 
 

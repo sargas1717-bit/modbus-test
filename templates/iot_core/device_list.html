@@ -7,18 +7,25 @@
 </div>
 <div class="overflow-x-auto rounded-xl bg-white p-5 shadow-sm">
   <table class="w-full text-left text-sm">
-    <thead><tr class="border-b text-slate-500"><th class="py-2">Nombre</th><th>Dirección Modbus</th><th>Ubicación</th><th>Estado</th>{% if user.has_admin_access %}<th>Acciones</th>{% endif %}</tr></thead>
+    <thead><tr class="border-b text-slate-500"><th class="py-2">Nombre</th><th>Tipo de sensor</th><th>Dirección Modbus</th><th>Ubicación</th><th>Estado</th><th>Acciones</th></tr></thead>
     <tbody>
       {% for device in devices %}
         <tr class="border-b last:border-0">
-          <td class="py-3">{{ device.name }}</td><td>{{ device.modbus_address }}</td><td>{{ device.location }}</td>
+          <td class="py-3">{{ device.name }}</td>
+          <td><span class="rounded-full bg-blue-50 px-2 py-1 text-blue-800">{{ device.get_sensor_type_display }}</span></td>
+          <td>{{ device.modbus_address }}</td><td>{{ device.location }}</td>
           <td>{{ device.is_active|yesno:"Activo,Inactivo" }}</td>
-          {% if user.has_admin_access %}
-            <td class="space-x-3"><a class="text-blue-700" href="{% url 'device_update' device.pk %}">Editar</a><a class="text-red-700" href="{% url 'device_delete' device.pk %}">Eliminar</a></td>
-          {% endif %}
+          <td class="space-x-3 whitespace-nowrap">
+            <a class="text-indigo-700" href="{% url 'device_analytics' device.pk %}">Análisis</a>
+            <a class="text-emerald-700" href="{% url 'device_export' device.pk %}">Excel</a>
+            {% if user.has_admin_access %}
+              <a class="text-blue-700" href="{% url 'device_update' device.pk %}">Editar</a>
+              <a class="text-red-700" href="{% url 'device_delete' device.pk %}">Eliminar</a>
+            {% endif %}
+          </td>
         </tr>
       {% empty %}
-        <tr><td class="py-4 text-slate-500" colspan="5">No hay dispositivos registrados.</td></tr>
+        <tr><td class="py-4 text-slate-500" colspan="6">No hay dispositivos registrados.</td></tr>
       {% endfor %}
     </tbody>
   </table>

@@ -13,30 +13,71 @@
     <a class="rounded bg-blue-700 px-4 py-2 text-white hover:bg-blue-800" href="{% url 'device_create' %}">Registrar dispositivo</a>
   {% endif %}
 </div>
-<div class="mb-6 grid gap-4 sm:grid-cols-2">
+<div class="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
   <article class="rounded-xl bg-white p-5 shadow-sm">
     <p class="text-sm text-slate-500">Dispositivos activos</p>
-    <p class="mt-2 text-3xl font-semibold">{{ active_device_count }}</p>
+    <p id="active-device-count" class="mt-2 text-3xl font-semibold">{{ active_device_count }}</p>
   </article>
   <article class="rounded-xl bg-white p-5 shadow-sm">
     <p class="text-sm text-slate-500">Registros históricos</p>
-    <p class="mt-2 text-3xl font-semibold">{{ record_count }}</p>
+    <p id="record-count" class="mt-2 text-3xl font-semibold">{{ record_count }}</p>
+  </article>
+  <article class="rounded-xl bg-white p-5 shadow-sm">
+    <p class="text-sm text-slate-500">Tipos de sensor activos</p>
+    <p id="sensor-type-count" class="mt-2 text-3xl font-semibold">{{ sensor_type_count }}</p>
   </article>
 </div>
-<section class="mb-6 rounded-xl bg-white p-5 shadow-sm">
-  <h2 class="mb-3 text-xl font-semibold">Histórico reciente</h2>
-  <div id="history-chart" class="min-h-80"></div>
+<section class="mb-6">
+  <div class="mb-4">
+    <h2 class="text-2xl font-semibold">Sensores por categoría</h2>
+    <p class="mt-1 text-sm text-slate-600">Cada gráfico mantiene su propia unidad de medida.</p>
+  </div>
+  <div class="grid gap-5 xl:grid-cols-2">
+    {% for sensor in sensor_charts %}
+      <article class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
+        <div class="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 p-5">
+          <div>
+            <span class="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-blue-800">{{ sensor.label }}</span>
+            <h3 class="mt-3 text-lg font-semibold">{{ sensor.label }}{% if sensor.unit %} · {{ sensor.unit }}{% endif %}</h3>
+          </div>
+          <div class="text-right">
+            <p class="text-xs uppercase tracking-wide text-slate-500">Última lectura</p>
+            {% if sensor.latest_value != None %}
+              <p id="latest-value-{{ sensor.key }}" class="mt-1 text-2xl font-bold text-slate-900">{{ sensor.latest_value|floatformat:2 }}{% if sensor.unit %}<span class="ml-1 text-sm font-medium text-slate-500">{{ sensor.unit }}</span>{% endif %}</p>
+              <p id="latest-time-{{ sensor.key }}" class="text-xs text-slate-500">{{ sensor.latest_timestamp|date:"d/m/Y H:i:s" }}</p>
+            {% else %}
+              <p id="latest-value-{{ sensor.key }}" class="mt-2 text-sm text-slate-500">Sin lecturas todavía</p>
+              <p id="latest-time-{{ sensor.key }}" class="text-xs text-slate-500"></p>
+            {% endif %}
+          </div>
+        </div>
+        <div class="flex items-center justify-between px-5 pt-4 text-sm">
+          <span class="text-slate-500">Dispositivos activos</span>
+          <span id="active-count-{{ sensor.key }}" class="font-semibold">{{ sensor.active_device_count }}</span>
+        </div>
+        <div id="chart-{{ sensor.key }}" class="h-72 w-full"></div>
+        <p id="empty-{{ sensor.key }}" class="mx-5 my-4 hidden h-48 items-center justify-center rounded-lg border border-dashed border-slate-300 text-sm text-slate-500">
+          Aún no hay datos para esta categoría.
+        </p>
+      </article>
+    {% endfor %}
+  </div>
 </section>
 <section class="rounded-xl bg-white p-5 shadow-sm">
   <h2 class="mb-4 text-xl font-semibold">Últimos registros</h2>
   <div class="overflow-x-auto">
     <table class="w-full text-left text-sm">
-      <thead><tr class="border-b text-slate-500"><th class="py-2">Fecha</th><th>Dispositivo</th><th>Valor</th></tr></thead>
-      <tbody>
+      <thead><tr class="border-b text-slate-500"><th class="py-2">Fecha</th><th>Dispositivo</th><th>Tipo</th><th>Valor</th></tr></thead>
+      <tbody id="recent-records">
         {% for record in records %}
-          <tr class="border-b last:border-0"><td class="py-2">{{ record.timestamp|date:"Y-m-d H:i:s" }}</td><td>{{ record.device.name }}</td><td>{{ record.value }}</td></tr>
+          <tr class="border-b last:border-0">
+            <td class="py-2">{{ record.timestamp|date:"Y-m-d H:i:s" }}</td>
+            <td>{{ record.device.name }}</td>
+            <td><span class="rounded-full bg-slate-100 px-2 py-1 text-xs">{{ record.device.get_sensor_type_display }}</span></td>
+            <td>{{ record.value|floatformat:2 }}{% if record.device.sensor_unit %} {{ record.device.sensor_unit }}{% endif %}</td>
+          </tr>
         {% empty %}
-          <tr><td class="py-4 text-slate-500" colspan="3">Todavía no hay mediciones.</td></tr>
+          <tr><td class="py-4 text-slate-500" colspan="4">Todavía no hay mediciones.</td></tr>
         {% endfor %}
       </tbody>
     </table>
@@ -46,19 +87,134 @@
 {% endblock %}
 {% block scripts %}
 <script>
-  const chartData = JSON.parse(document.getElementById("chart-data").textContent);
-  const traces = chartData.map(series => ({
-    x: series.labels,
-    y: series.values,
-    type: "scatter",
-    mode: "lines+markers",
-    name: series.name
-  }));
-  Plotly.newPlot("history-chart", traces, {
-    autosize: true,
-    margin: { t: 10, r: 20, b: 55, l: 55 },
-    xaxis: { title: "Fecha" },
-    yaxis: { title: "Valor" }
-  }, { responsive: true });
+  const chartDataElement = document.getElementById("chart-data");
+  const dashboardDataUrl = "{% url 'dashboard_data' %}";
+  const refreshInterval = 5000;
+  const plotOptions = {
+    responsive: true,
+    displaylogo: false,
+    modeBarButtonsToRemove: ["lasso2d", "select2d"]
+  };
+
+  function renderSensorChart(sensor) {
+    const chart = document.getElementById(`chart-${sensor.key}`);
+    const emptyMessage = document.getElementById(`empty-${sensor.key}`);
+    emptyMessage.classList.toggle("hidden", sensor.series.length > 0);
+    emptyMessage.classList.toggle("flex", sensor.series.length === 0);
+    if (!sensor.series.length) return;
+
+    const traces = sensor.series.map(series => ({
+      x: series.labels,
+      y: series.values,
+      type: "scatter",
+      mode: "lines+markers",
+      name: series.name,
+      line: { shape: "spline", width: 2 },
+      marker: { size: 5 }
+    }));
+    const layout = {
+      autosize: true,
+      margin: { t: 10, r: 20, b: 55, l: 60 },
+      paper_bgcolor: "transparent",
+      plot_bgcolor: "transparent",
+      legend: { orientation: "h", y: -0.3 },
+      xaxis: { title: "Hora", gridcolor: "#f1f5f9" },
+      yaxis: {
+        title: sensor.unit ? `Valor (${sensor.unit})` : "Valor",
+        gridcolor: "#f1f5f9"
+      },
+      hovermode: "x unified"
+    };
+    if (chart.data) {
+      Plotly.react(chart, traces, layout, plotOptions);
+    } else {
+      Plotly.newPlot(chart, traces, layout, plotOptions);
+    }
+  }
+
+  function renderRecentRecords(records) {
+    const body = document.getElementById("recent-records");
+    body.replaceChildren();
+
+    if (!records.length) {
+      const row = document.createElement("tr");
+      const cell = document.createElement("td");
+      cell.colSpan = 4;
+      cell.className = "py-4 text-slate-500";
+      cell.textContent = "Todavía no hay mediciones.";
+      row.append(cell);
+      body.append(row);
+      return;
+    }
+
+    records.forEach(record => {
+      const row = document.createElement("tr");
+      row.className = "border-b last:border-0";
+      const timestampCell = document.createElement("td");
+      timestampCell.className = "py-2";
+      timestampCell.textContent = new Date(record.timestamp).toLocaleString();
+      const deviceCell = document.createElement("td");
+      deviceCell.textContent = record.device_name;
+      const typeCell = document.createElement("td");
+      const badge = document.createElement("span");
+      badge.className = "rounded-full bg-slate-100 px-2 py-1 text-xs";
+      badge.textContent = record.sensor_type;
+      typeCell.append(badge);
+      const valueCell = document.createElement("td");
+      valueCell.textContent = `${Number(record.value).toFixed(2)}${record.unit ? ` ${record.unit}` : ""}`;
+      row.append(timestampCell, deviceCell, typeCell, valueCell);
+      body.append(row);
+    });
+  }
+
+  function renderDashboard(data) {
+    document.getElementById("active-device-count").textContent = data.active_device_count;
+    document.getElementById("record-count").textContent = data.record_count;
+    document.getElementById("sensor-type-count").textContent = data.sensor_type_count;
+    data.sensor_charts.forEach(sensor => {
+      document.getElementById(`active-count-${sensor.key}`).textContent =
+        sensor.active_device_count;
+
+      const latestValue = document.getElementById(`latest-value-${sensor.key}`);
+      const latestTime = document.getElementById(`latest-time-${sensor.key}`);
+      if (sensor.latest_value === null) {
+        latestValue.textContent = "Sin lecturas todavía";
+        latestValue.className = "mt-2 text-sm text-slate-500";
+        latestTime.textContent = "";
+      } else {
+        latestValue.className = "mt-1 text-2xl font-bold text-slate-900";
+        latestValue.replaceChildren(
+          document.createTextNode(Number(sensor.latest_value).toFixed(2))
+        );
+        if (sensor.unit) {
+          const unit = document.createElement("span");
+          unit.className = "ml-1 text-sm font-medium text-slate-500";
+          unit.textContent = sensor.unit;
+          latestValue.append(unit);
+        }
+        latestTime.textContent = new Date(sensor.latest_timestamp).toLocaleString();
+      }
+      renderSensorChart(sensor);
+    });
+    renderRecentRecords(data.records);
+  }
+
+  async function refreshDashboard() {
+    try {
+      const response = await fetch(dashboardDataUrl, {
+        headers: { Accept: "application/json" },
+        credentials: "same-origin"
+      });
+      if (!response.ok) {
+        throw new Error(`El servidor respondió HTTP ${response.status}`);
+      }
+      renderDashboard(await response.json());
+    } catch (error) {
+      console.error("No se pudo actualizar el dashboard:", error);
+    }
+  }
+
+  renderDashboard(JSON.parse(chartDataElement.textContent));
+  window.setInterval(refreshDashboard, refreshInterval);
 </script>
 {% endblock %}
